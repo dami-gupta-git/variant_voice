@@ -1,268 +1,201 @@
-# TumorBoard v2
-An AI-powered tool for assessing cancer variant actionability with integrated validation.
+# TumorBoard Variant Narrator
 
-**Current Validation Performance: 82% accuracy | 89% Tier I F1 score**
+A research tool for generating explainable narratives for somatic variants using multi-agent LLMs.
 
-**TL;DR**:  
-Precision oncology depends on expert molecular tumor boards to determine whether genetic variants found in 
-tumors are clinically 'actionable'—that is, whether they have associated FDA-approved therapies or clinical 
-guidelines. This is a complex, manual process involving synthesis of evidence from multiple databases.
+**TL;DR:**
+Molecular tumor boards spend significant time "telling the story" of each variant—synthesizing evidence from multiple databases, weighing conflicting signals, and contextualizing findings for patient care. TumorBoard Variant Narrator automates this storytelling layer by:
 
-TumorBoard v2 automates and mimics this expert workflow by aggregating evidence from key genomic and drug-labeling 
-databases (CIViC, ClinVar, COSMIC, FDA) and uses large language models (LLMs) to assign standardized 
-AMP/ASCO/CAP tiers indicating clinical actionability levels. All AI decision rationale and evidence sources are 
-fully logged for transparency and auditability. A built-in validation framework benchmarks AI predictions against 
-expert-labeled “gold-standard” variant classifications.
+1. **Aggregating evidence** from CIViC, COSMIC, OncoKB, ClinVar, gnomAD, SpliceAI, AlphaMissense, and FDA drug labels
+2. **Generating rich variant narratives** that explain what is known about a variant, highlight the most clinically relevant evidence, and provide structured take-home points for tumor board review
+3. **Detecting and explaining conflicts** when data sources disagree (e.g., high somatic recurrence vs high population frequency)
+4. **Using multi-agent reasoning** (Advocate, Skeptic, Arbiter) to debate interpretations and produce balanced, transparent conclusions
+5. **Grounding outputs with RAG** via Honeybee embeddings—retrieving similar historical cases, guideline excerpts, and tool documentation to anchor narratives in established patterns
+6. **Real-time literature integration** from PubMed and bioRxiv via RSS feeds and API queries, filtered for relevance to the gene/variant of interest
 
-Note: Currently, this tool supports only single nucleotide polymorphisms (SNPs) and small insertions/deletions (indels).  
-It is a research prototype exploring AI-assisted decision-making and is not intended for clinical use.  
+**Note:** This is a research prototype, not a clinical tool.
 
-**Coming Soon TL;DR – The Real AI Tumor Board**
-- Full RAG stack (PubMed, ClinicalTrials.gov, NCCN/ESMO guidelines,..)
-- New evidence sources: SpliceAI, TCGA prevalence, ClinicalTrials.gov integration
-- Patient VCF Files:
-Supports analysis from single variants to whole patient exomes/genomes by uploading VCF files, performing 
-variant prioritization, and generating comprehensive clinical reports with trial matching.
-- Two-phase agentic architecture:  
-  → Collaborative phase: parallel specialized agents (Literature, Pathways, Trials, Guidelines, etc.)  
-  → Adversarial phase: Advocate vs. Skeptic debate → Arbiter assigns final tier  
-  → Configurable meta-rules decide who speaks when, when to dig deeper, and when to escalate  
-  → Semantic embeddings and a knowledge graph to store and retrieve the history of agent debates
+***
 
-The result: higher accuracy, transparent debate traces, and reasoning that closely resembles a real multidisciplinary panel.
+## Why this exists
 
-### Quick Start (Docker)
+Somatic variant interpretation is rarely a clean yes/no decision. Real-world cases often involve:
 
-```bash
-git clone https://github.com/dami-gupta-git/tumor_board_v2
-cd tumor_board_v2
-cp .env.example .env  
+- High recurrence in COSMIC and strong CIViC oncogenic evidence vs high population frequency in gnomAD.  
+- Strong splice-impact predictions from SpliceAI vs seemingly synonymous or low-impact annotation from SnpEff/VEP.  
+- Divergent computational scores (e.g., AlphaMissense vs other in silico predictors) vs curated clinical assertions (ClinVar, CIViC, OncoKB).  
 
-# Add your API keys to .env
-cd streamlit
-docker compose up --build
+ACMG/AMP and AMP/ASCO/CAP guidelines acknowledge that **conflicting evidence is common**, especially in cancer, but they do not fully specify how to weigh heterogeneous sources for every edge case.  In practice, expert molecular tumor boards spend significant effort **telling the story of a variant**: what is known, what conflicts, and how to contextualize that for patient care.
 
-# Open http://localhost:8501
-```
-See **[Streamlit App Guide](streamlit/README.md)** for full details on the web interface.
+TumorBoard Variant Narrator is designed to automate that *storytelling layer* for research and decision-support experimentation.
 
-  
-### Screenshots
-**Web UI**  
-![alt text](image-5.png)  
- 
-**Validator**  
-![alt text](image-6.png)
+***
 
+## What the app does
 
-## Overview
+### 1. Evidence aggregation and normalization
 
-TumorBoard models the expert application of the **AMP/ASCO/CAP 4-tier classification system**.
+The engine collects and normalizes variant-level evidence from multiple sources:
 
-Available in two interfaces:
-- **Streamlit Web App**: Modern single-container web interface
-- **Command-Line Interface**: Python CLI tool for batch processing and automation
+- Somatic clinical/oncology databases: CIViC, COSMIC, OncoKB, CGI biomarkers, FDA drug labels.  
+- Population frequency: gnomAD and related population datasets.  
+- Functional and consequence annotation: SnpEff (and/or VEP/ANNOVAR-style annotations).  
+- Computational predictors: SpliceAI, AlphaMissense, and other in silico tools as available.  
 
-### Key Features
+Evidence is standardized onto consistent models (gene, transcript, HGVS, consequence categories, effect types, AF, scores, etc.) to reduce discrepancies from nomenclature and tool syntax.
 
-- **Evidence Aggregation**: Fetches from CIViC, ClinVar, COSMIC, FDA drug approvals, CGI Biomarkers, VICC MetaKB, and AlphaMissense
-- **VICC MetaKB Integration**: Harmonized evidence from 6 major cancer variant knowledgebases (CIViC, CGI, JAX-CKB, OncoKB, PMKB, MolecularMatch)
-- **LLM Tiering**: Assigns AMP/ASCO/CAP tiers with confidence scores and rationale
-- **Smart Evidence Prioritization**: Surfaces tumor-specific sensitivity evidence first; correctly interprets resistance markers
-- **Validation Framework**: Built-in benchmarking against gold standard datasets
-- **Multi-LLM Support**: OpenAI, Anthropic, Google, Groq via litellm
+### 2. Mapping to guideline-like evidence codes
 
-See **[Full Feature List](FEATURES.md)** for variant normalization, functional annotations, and more.
+The app then maps raw evidence onto **guideline-style evidence categories** inspired by ACMG/AMP and AMP/ASCO/CAP (adapted to somatic oncology):
 
+- Population-based evidence (e.g., BA1/BS1 analogs) from high AF in gnomAD.
+- Computational evidence (PP3/BP4 analogs) from SpliceAI, AlphaMissense, and other predictors.
+- Functional/experimental evidence (PS3/BS3-like) from curated functional data where available.
+- Somatic clinical actionability evidence (AMP/ASCO/CAP Tier I/II drivers, guideline-backed biomarkers, FDA labels).
 
-## Why This Tool Exists
+This structured representation provides a **deterministic backbone** for interpretation and sets up the narrative and multi-agent reasoning.
 
-Molecular tumor boards face significant challenges:
+### 3. Conflict detection across datasets
 
-Variant classification for tumor boards is:
+Given the mapped evidence, the engine detects **predefined conflict archetypes**, such as:
 
-1. Resource Intensive: Manual variant review is slow, requiring deep expertise and coordination.
-2. Incomplete: No single database fully covers all variants or tumor contexts.
-3. Fragmented: Evidence is scattered across multiple sources, demanding extensive manual integration.
-4. Rapidly Evolving: Clinical evidence, trials, and approvals constantly change, challenging up-to-date assessments.  
+- COSMIC/CIViC/OncoKB suggest a strong oncogenic driver vs gnomAD AF implies likely benign or common polymorphism.  
+- SpliceAI predicts strong splice disruption vs consequence annotation suggests synonymous/low-impact.  
+- Multiple annotation tools disagree on transcript or variant consequence.  
+- Computational tools strongly disagree with each other or with curated clinical assertions.
 
-TumorBoard tackles these challenges by automating evidence synthesis and triaging variant actionability with 
-AI, aiming to improve speed, coverage, and transparency.
+These conflicts are not the *end product*, but they shape the narrative and trigger multi-agent reasoning.
 
+***
 
-## Disclaimer
+## The Variant Narrative
 
-**Limitations:**
-- LLMs may hallucinate or misinterpret evidence 
-- Pattern matching ≠ expert clinical judgment  
-- Requires validation against gold standards (hence the built-in framework)
-- Evidence quality: Depends on database coverage
-- Novel variants: Limited data for rare variants
-- Context windows: Very long evidence may be truncated
+The **primary output** of the app is a **variant narrative**: a structured, human-readable explanation suitable for tumor boards, reports, and curation discussions.
 
-**This tool is for research purposes only.** Clinical decisions should always
-be made by qualified healthcare professionals.
+Each narrative typically includes:
 
-## Summary Roadmap 
+- A concise description of the variant  
+  - Gene, protein change, genomic coordinates, consequence, and key annotations.
 
-### Enhanced Evidence Sources
-SpliceAI, TCGA prevalence data, and ClinicalTrials.gov integration. AlphaMissense pathogenicity predictions are now integrated.
+- A synthesized evidence summary  
+  - Top-line points from CIViC, COSMIC, ClinVar, gnomAD, SnpEff, SpliceAI, AlphaMissense, FDA labels, etc.  
+  - Highlighted evidence that is most relevant to actionability under AMP/ASCO/CAP.
 
-### RAG Pipeline
-Indexed PubMed abstracts, clinical trial matching, NCCN/ESMO guideline retrieval, and variant lookups for rare mutations.
+- Agreement vs conflict across data sources  
+  - Explicit enumeration of where sources align (e.g., multiple databases flag as oncogenic) and where they diverge (e.g., population vs somatic evidence, computational vs clinical).
 
-### Agentic AI Architecture
-A two-phase multi-agent system that first performs collaborative evidence gathering through specialized agents 
-(e.g., Literature, Trials, Pathways), followed by an adversarial debate between Advocate and Skeptic agents 
-where an Arbiter assigns the final clinical actionability tier; this process leverages semantic embeddings and a 
-knowledge graph to store and retrieve the complete history of agent debates, enhancing reasoning transparency and 
-accuracy.
+- Contextual interpretation  
+  - How the evidence fits into guideline-style reasoning (ACMG/AMP, AMP/ASCO/CAP), with clear statements like “computational evidence supports but does not override high-quality clinical data” or “population data argues against a high-tier classification despite recurrent somatic reports.”
 
-### Patient-Level Analysis
-VCF upload, whole-exome/genome processing, variant prioritization, and comprehensive clinical report generation.
+- A structured “take-home” section  
+  - A short, bullet-point summary of the most important considerations for a human reviewer or tumor board.  
 
-See **[Full Roadmap](ROADMAP.md)** for detailed feature descriptions and implementation plans.
+Narratives are generated by a constrained LLM that is **grounded with Honeybee embeddings**, retrieving:
 
-## Getting Started
+- Similar historical conflict cases and their outcomes.  
+- Relevant guideline excerpts (ACMG/AMP, AMP/ASCO/CAP, somatic specifications).  
+- Tool documentation and model-card explanations (e.g., SpliceAI limitations, AlphaMissense behavior).  
 
-### Pick Your Interface
+***
 
-**Option 1: Web Application (Docker - Recommended)**
+## The Multi-Agent Solution
 
-Use the Streamlit web interface with zero local setup:
+Instead of asking a single model to make a monolithic judgment, TumorBoard Variant Narrator uses a **multi-agent LLM architecture** that mimics the dynamics of a molecular tumor board.
 
-```bash
-# 1. Set API keys
-cd streamlit
-cp .env.example .env
-# Edit .env with your API keys
+### The Advocate Agent
 
-# 2. Start the app
-docker compose up --build
+- Focus: **Argues for higher actionability / pathogenicity**.  
+- Perspective:
+  - Emphasizes clinical and somatic evidence from CIViC, COSMIC, OncoKB, FDA labels, and guidelines that support treating the variant as a driver with therapeutic or prognostic implications.
+  - Highlights strong functional data, recurrent hotspot status, and concordant expert assertions that favor a higher AMP/ASCO/CAP tier.
 
-# 3. Open http://localhost:8501
-```
+### The Skeptic Agent
 
----
+- Focus: **Challenges the Advocate, especially using population and computational evidence**.
+- Perspective:
+  - Brings in gnomAD AF, gene constraint metrics, and any benign or conflicting clinical submissions to argue for a more conservative classification.
+  - Leverages SpliceAI, AlphaMissense, and other in silico tools (while aware of their limitations) to question over-interpretation of weak somatic evidence.
+  - Points out technical caveats: transcript choice, annotation discrepancies, low coverage, or biases in databases.
 
-**Option 2: CLI Tool (Requires pip install)**
+### The Arbiter Agent
 
-Use the command-line interface for batch processing and validation:
+- Focus: **Weighs arguments and synthesizes the final narrative and tier recommendation**.  
+- Responsibilities:
+  - Reads the Advocate and Skeptic arguments (plus retrieved context via embeddings).
+  - Applies an explicit ruleset aligned with AMP/ASCO/CAP and ACMG-style criteria to weigh different evidence types.
+  - Produces the **final variant narrative**, including:  
+    - A balanced explanation of why each side is compelling or limited.  
+    - A structured recommendation for how a human curator or deterministic tiering engine should treat the variant (e.g., “Tier II with caution,” “Tier III – VUS due to unresolved conflict,” etc.).  
 
-```bash
-# 1. Clone and install
-git clone https://github.com/dami-gupta-git/tumor_board_v2
-cd tumor_board_v2
-pip install -e .
+The Arbiter does **not** operate as an unconstrained oracle: its outputs are restricted to a JSON schema and narrative template, and final clinical decisions remain with deterministic logic and/or human review.
 
-# 2. Set API key
-export OPENAI_API_KEY="your-key-here"
+***
 
-# 3. Use CLI commands
-tumorboard assess BRAF V600E --tumor "Melanoma" --no-log
-tumorboard batch benchmarks/sample_batch.json --no-log
-tumorboard validate benchmarks/gold_standard.json --no-log
-```
+## Embeddings and RAG: Honeybee as the memory layer
 
-**Alternative Large Language Models:**
-```bash
-# Use Anthropic Claude 3 Haiku
-export ANTHROPIC_API_KEY="your-key-here"
-tumorboard assess BRAF V600E --model claude-3-haiku-20240307
+To keep reasoning grounded and reproducible, the system uses **Honeybee embeddings** as a memory and retrieval layer:
 
-# Use Google Gemini
-export GOOGLE_API_KEY="your-key-here"
-tumorboard assess BRAF V600E --model gemini/gemini-1.5-pro
+- Indexing  
+  - Historical variant cases, including conflicts and how they were resolved.  
+  - Guideline excerpts and expert commentary.  
+  - Tool documentation and caveats for COSMIC, CIViC, gnomAD, SpliceAI, AlphaMissense, SnpEff, etc.  
 
-# Use Groq Llama
-export GROQ_API_KEY="your-key-here"
-tumorboard assess BRAF V600E --model groq/llama-3.1-70b-versatile
-```
+- Retrieval  
+  - For a new variant, the agents retrieve similar conflicts and relevant guidance, anchoring their arguments in known patterns and recommendations.  
 
-## LLM Decision Logging
+- Benefits  
+  - More consistent narratives for similar variants.  
+  - Enhanced transparency (you can track which prior cases or guideline snippets influenced a given narrative).  
 
-All LLM decisions are logged to `./logs/llm_decisions_YYYYMMDD.jsonl` (enabled by default, disable with `--no-log`). Captures request details, tier decisions, confidence scores, rationale, and errors.
+***
 
-See **[Logging Documentation](logging.md)** for log format, analysis examples with Python/jq, and best practices.
+## Deterministic tiering and auditability
 
-## CLI Reference
+Although the variant narrative is the centerpiece, TumorBoard Variant Narrator can integrate with or provide a **deterministic tiering layer**:
 
-| Command | Description |
-|---------|-------------|
-| `tumorboard assess BRAF V600E --tumor Melanoma` | Assess single variant |
-| `tumorboard batch variants.json` | Process multiple variants |
-| `tumorboard validate gold_standard.json` | Benchmark against gold standard |
+- Rule-based tiering  
+  - Uses explicit, configurable rules to map evidence codes and Arbiter recommendations into AMP/ASCO/CAP-style tiers (Tier I–IV).  
 
-See **[Full CLI Documentation](CLI.md)** for all options, output formats, and alternative model configuration.
+- Logging and audit
+  - Logs all evidence, agent arguments, retrieved context, and final narrative in a structured format.
+  - Supports post-hoc analysis of:
+    - Where agents disagreed.
+    - How often the Arbiter sided with Advocate vs Skeptic.
+    - The impact of multi-agent reasoning on reclassification and VUS rates.
 
-## AMP/ASCO/CAP Tier System
+This makes the system suitable for **research on LLM-assisted variant interpretation**, rather than opaque automation.
 
-- **Tier I**: Variants with strong clinical significance
-  - FDA-approved therapies for specific variant + tumor type
-  - Professional guideline recommendations
-  - Strong evidence from clinical trials
+***
 
-- **Tier II**: Variants with potential clinical significance
-  - FDA-approved therapies for different tumor types
-  - Clinical trial evidence
-  - Case reports or smaller studies
+## Intended use
 
-- **Tier III**: Variants of unknown clinical significance
-  - Preclinical evidence only
-  - Uncertain biological significance
-  - Conflicting evidence
+- **Research and methods development**
+  - Studying multi-agent LLM reasoning for variant interpretation and conflict resolution in somatic oncology.
 
-- **Tier IV**: Benign or likely benign variants
-  - Known benign polymorphisms
-  - No oncogenic evidence
+- **Tumor board support (exploratory)**
+  - Providing variant narratives and structured pros/cons to inform, not replace, multidisciplinary deliberations.
 
+- **Education and training**
+  - Teaching trainees how different evidence types interact and how guideline-style logic applies when data sources disagree.
 
-## Variant Normalization
+**Important:** This is a **research prototype**, not a regulated medical device, and is **not intended for unsupervised clinical decision-making**.
 
-Automatically standardizes variant notations (`Val600Glu` → `V600E`, `p.V600E` → `V600E`) for better database matching. Supports SNPs and small indels; rejects fusions, amplifications, and other structural variants.
+***
 
-See **[Variant Normalization Details](VARIANT_NORMALIZATION.md)** for supported formats and programmatic usage.
+## High-level usage
 
-## Variant Annotations
+1. **Setup**
+   - Create a Python 3.11+ environment and install the package in development mode.
+   - Configure API keys for LLMs, Honeybee embeddings, and external annotation services.
 
-Extracts COSMIC, dbSNP, ClinVar IDs, HGVS notations, PolyPhen2/CADD scores, gnomAD frequencies, AlphaMissense pathogenicity predictions, and FDA drug approvals from MyVariant.info.
+2. **Run a variant through the Narrator**  
+   - Provide a variant (or batch) via CLI or API (e.g., gene, HGVS, tumor type).  
+   - The engine aggregates evidence, maps codes, runs the multi-agent dialogue, and produces:  
+     - A structured variant narrative.  
+     - A machine-readable conflict analysis and recommendation object.  
 
-See **[Variant Annotations Details](VARIANT_ANNOTATIONS.md)** for the full list of extracted fields.
+3. **Evaluate impact**
+   - Use the built-in validation harness and your gold-standard labels to compare:
+     - Baseline rule-only tiering vs multi-agent–informed tiering.
+     - Narrative quality and usefulness in tumor board-style workflows.
 
-## Configuration
-
-**Models:** OpenAI (gpt-4o-mini), Anthropic, Google Gemini, Groq via litellm
-**Data:** MyVariant.info (CIViC, ClinVar, COSMIC) + FDA openFDA API
-
-
-## Contributing
-
-See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, testing, and code quality guidelines.
-
-## License & Citation
-
-**Author:** Dami Gupta (dami.gupta@gmail.com)
-
-**License:** MIT License
-
-**Citation:** If you use TumorBoard in your research, please cite:
-
-```bibtex
-@software{tumorboard2025,
-  author = {Gupta, Dami},
-  title = {TumorBoard: LLM-Powered Cancer Variant Actionability Assessment},
-  year = {2025},
-  url = {https://github.com/dami-gupta-git/tumor_board_v2}
-}
-```
-
-## References
-
-- [AMP/ASCO/CAP Guidelines](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC5707196/)
-- [MyVariant.info](https://myvariant.info/) | [CIViC](https://civicdb.org/) | [ClinVar](https://www.ncbi.nlm.nih.gov/clinvar/) | [COSMIC](https://cancer.sanger.ac.uk/cosmic)
-- [FDA openFDA API](https://open.fda.gov/) | [Drugs@FDA](https://www.fda.gov/drugs/drug-approvals-and-databases/drugsfda-data-files)
-- [VICC MetaKB](https://search.cancervariants.org/) | [CGI Biomarkers](https://www.cancergenomeinterpreter.org/biomarkers)
-
----
-
-**Note**: This tool is for research purposes only. Clinical decisions should always be made by qualified healthcare professionals.
+Further installation and configuration details can be documented in `/docs` and CLI help as the project evolves.

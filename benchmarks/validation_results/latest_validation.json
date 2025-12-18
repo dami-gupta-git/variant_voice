@@ -1,0 +1,154 @@
+{
+  "total_cases": 46,
+  "correct_predictions": 33,
+  "accuracy": 0.717391304347826,
+  "average_confidence": 0.8543478260869566,
+  "tier_metrics": {
+    "Tier I": {
+      "tier": "Tier I",
+      "true_positives": 25,
+      "false_positives": 9,
+      "false_negatives": 1,
+      "precision": 0.7352941176470589,
+      "recall": 0.9615384615384616,
+      "f1_score": 0.8333333333333333
+    },
+    "Tier III": {
+      "tier": "Tier III",
+      "true_positives": 7,
+      "false_positives": 2,
+      "false_negatives": 5,
+      "precision": 0.7777777777777778,
+      "recall": 0.5833333333333334,
+      "f1_score": 0.6666666666666666
+    },
+    "Tier II": {
+      "tier": "Tier II",
+      "true_positives": 1,
+      "false_positives": 2,
+      "false_negatives": 7,
+      "precision": 0.3333333333333333,
+      "recall": 0.125,
+      "f1_score": 0.18181818181818182
+    }
+  },
+  "failure_analysis": [
+    {
+      "variant": "KRAS G12D",
+      "tumor_type": "Colorectal Cancer",
+      "expected": "Tier II",
+      "predicted": "Tier I",
+      "tier_distance": "1",
+      "confidence": "90.00%",
+      "summary": "The KRAS G12D variant in colorectal cancer is associated with resistance to cetuximab and panitumumab, which are FDA-approved therapies for this indication. This variant is explicitly mentioned in the..."
+    },
+    {
+      "variant": "KRAS G12D",
+      "tumor_type": "Pancreatic Cancer",
+      "expected": "Tier III",
+      "predicted": "Tier I",
+      "tier_distance": "2",
+      "confidence": "95.00%",
+      "summary": "The KRAS G12D variant in pancreatic cancer is associated with an FDA-approved therapy, making it clinically significant. This variant is explicitly mentioned in the FDA label for AVMAPKI FAKZYNJA CO-P..."
+    },
+    {
+      "variant": "KRAS G13D",
+      "tumor_type": "Colorectal Cancer",
+      "expected": "Tier II",
+      "predicted": "Tier I",
+      "tier_distance": "1",
+      "confidence": "90.00%",
+      "summary": "The KRAS G13D variant in colorectal cancer is a resistance marker that excludes the use of cetuximab and panitumumab, both of which are FDA-approved therapies for this indication. This variant is acti..."
+    },
+    {
+      "variant": "NRAS Q61K",
+      "tumor_type": "Colorectal Cancer",
+      "expected": "Tier II",
+      "predicted": "Tier I",
+      "tier_distance": "1",
+      "confidence": "90.00%",
+      "summary": "The NRAS Q61K variant in colorectal cancer is associated with resistance to cetuximab and panitumumab, making it a critical negative biomarker. It is also linked to FDA-approved therapy with Vectibix ..."
+    },
+    {
+      "variant": "KIT V560D",
+      "tumor_type": "Gastrointestinal Stromal Tumor",
+      "expected": "Tier I",
+      "predicted": "Tier III",
+      "tier_distance": "2",
+      "confidence": "60.00%",
+      "summary": "The KIT V560D variant in gastrointestinal stromal tumors (GISTs) shows mixed sensitivity and resistance to standard therapies, with no FDA-approved treatment specifically targeting this variant. There..."
+    },
+    {
+      "variant": "KIT D816V",
+      "tumor_type": "Gastrointestinal Stromal Tumor",
+      "expected": "Tier II",
+      "predicted": "Tier I",
+      "tier_distance": "1",
+      "confidence": "95.00%",
+      "summary": "The KIT D816V variant in gastrointestinal stromal tumors (GIST) has strong clinical significance due to FDA-approved therapies specifically indicated for this mutation. Multiple drugs, including imati..."
+    },
+    {
+      "variant": "TP53 R273H",
+      "tumor_type": "Breast Cancer",
+      "expected": "Tier III",
+      "predicted": "Tier II",
+      "tier_distance": "1",
+      "confidence": "75.00%",
+      "summary": "The TP53 R273H variant in breast cancer shows mixed evidence regarding treatment sensitivity and resistance. While there are several therapies that demonstrate sensitivity, there is no FDA-approved th..."
+    },
+    {
+      "variant": "APC R1450*",
+      "tumor_type": "Colorectal Cancer",
+      "expected": "Tier III",
+      "predicted": "Tier I",
+      "tier_distance": "2",
+      "confidence": "85.00%",
+      "summary": "The APC R1450* variant in colorectal cancer is associated with sensitivity to nirogacestat, which has strong evidence supporting its use. This variant is recognized as a significant biomarker for trea..."
+    },
+    {
+      "variant": "VHL R167Q",
+      "tumor_type": "Clear Cell Renal Cell Carcinoma",
+      "expected": "Tier III",
+      "predicted": "Tier I",
+      "tier_distance": "2",
+      "confidence": "90.00%",
+      "summary": "The VHL R167Q variant is associated with sensitivity to FDA-approved therapies in clear cell renal cell carcinoma. Specifically, belzutifan is indicated for patients with VHL disease and related renal..."
+    },
+    {
+      "variant": "FGFR2 N549K",
+      "tumor_type": "Cholangiocarcinoma",
+      "expected": "Tier II",
+      "predicted": "Tier I",
+      "tier_distance": "1",
+      "confidence": "90.00%",
+      "summary": "The FGFR2 N549K variant is associated with an FDA-approved therapy, Pemazyre, for cholangiocarcinoma. This approval indicates that the presence of this variant can guide treatment decisions."
+    },
+    {
+      "variant": "MET D1228N",
+      "tumor_type": "Non-Small Cell Lung Cancer",
+      "expected": "Tier II",
+      "predicted": "Tier III",
+      "tier_distance": "1",
+      "confidence": "60.00%",
+      "summary": "The MET D1228N variant in non-small cell lung cancer has mixed evidence regarding its clinical significance. While there are FDA-approved therapies associated with MET, the specific variant does not h..."
+    },
+    {
+      "variant": "POLE P286R",
+      "tumor_type": "Endometrial Cancer",
+      "expected": "Tier II",
+      "predicted": "Tier I",
+      "tier_distance": "1",
+      "confidence": "90.00%",
+      "summary": "The POLE P286R variant in endometrial cancer is associated with sensitivity to pembrolizumab. This variant is recognized as a biomarker for treatment with this FDA-approved therapy."
+    },
+    {
+      "variant": "SMAD4 R361H",
+      "tumor_type": "Pancreatic Cancer",
+      "expected": "Tier III",
+      "predicted": "Tier II",
+      "tier_distance": "1",
+      "confidence": "70.00%",
+      "summary": "The SMAD4 R361H variant in pancreatic cancer is associated with resistance to cetuximab and panitumumab. While there are no FDA-approved therapies specifically targeting this variant, it serves as an ..."
+    }
+  ]
+}

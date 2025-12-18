@@ -1,0 +1,109 @@
+{
+  "analysis_date": "2025-12-15",
+  "validation_summary": {
+    "total_cases": 46,
+    "correct_predictions": 18,
+    "accuracy": "39.1%",
+    "average_confidence": "78.6%"
+  },
+  "tier_performance": {
+    "Tier I": {
+      "precision": "83.3%",
+      "recall": "37.0%",
+      "f1_score": "51.3%",
+      "issue": "LOW RECALL - missing 17 of 27 Tier I cases (63% miss rate)"
+    },
+    "Tier II": {
+      "precision": "16.0%",
+      "recall": "44.4%",
+      "issue": "LOW PRECISION - 21 false positives (many Tier I cases incorrectly downgraded to Tier II)"
+    },
+    "Tier III": {
+      "precision": "44.4%",
+      "recall": "40.0%",
+      "issue": "MODERATE - balanced but still significant errors in both directions"
+    }
+  },
+  "error_categories": {
+    "tier_i_to_tier_ii_downgrades": {
+      "count": 17,
+      "percentage_of_errors": "60.7%",
+      "description": "The DOMINANT error pattern - Tier I cases incorrectly classified as Tier II",
+      "root_cause": "The prompt says 'later-line restriction ALONE does not downgrade to Tier II if the biomarker-directed therapy IS the guideline-recommended treatment at that line' but LLM is not following this correctly",
+      "affected_variants": [
+        "BRAF V600E in NSCLC/ATC",
+        "KRAS G12C/G12D/G13D in CRC",
+        "PIK3CA H1047R/E545K/E542K in Breast Cancer",
+        "IDH1 R132H in AML, IDH1 R132C in Cholangiocarcinoma",
+        "IDH2 R140Q in AML",
+        "KIT D816V/D816H in Systemic Mastocytosis",
+        "KIT V560D in GIST",
+        "ESR1 Y537S/D538G in Breast Cancer",
+        "BRCA1 C61G in Breast Cancer"
+      ]
+    },
+    "tier_ii_to_tier_iii_downgrades": {
+      "count": 4,
+      "percentage_of_errors": "14.3%",
+      "root_cause": "LLM not recognizing resistance markers as Tier II actionable",
+      "affected_variants": [
+        "EGFR C797S in NSCLC",
+        "NRAS Q61K/G12D in Melanoma",
+        "MET D1228N in NSCLC"
+      ]
+    },
+    "tier_iii_to_tier_ii_upgrades": {
+      "count": 5,
+      "percentage_of_errors": "17.9%",
+      "root_cause": "Over-weighting sensitivity signals without FDA biomarker requirements",
+      "affected_variants": [
+        "BRAF G469A in Melanoma",
+        "TP53 R175H in CRC",
+        "APC R1450* in CRC",
+        "VHL R167Q in ccRCC",
+        "SMAD4 R361H in Pancreatic Cancer"
+      ]
+    },
+    "other_errors": {
+      "count": 2,
+      "cases": [
+        "KRAS G12D in Pancreatic Cancer: Tier III ’ Tier I (hallucinated FDA approval)",
+        "KIT D816V in GIST: Tier II ’ Tier I (context-dependent - D816V is resistance in GIST)"
+      ]
+    }
+  },
+  "key_insights": {
+    "main_problem": "The 'later-line' logic is too aggressive - downgrading Tier I cases to Tier II when the biomarker-directed therapy IS the standard-of-care at that treatment line",
+    "evidence": "17 of 28 errors (60.7%) are Tier I to Tier II downgrades citing 'later-line treatment'",
+    "pattern": "LLM sees 'after prior therapy' in FDA label and auto-downgrades to Tier II, ignoring that this IS the standard approach for these biomarkers"
+  },
+  "proposed_fixes": [
+    {
+      "priority": 1,
+      "description": "Add explicit biomarker+tumor combinations where later-line therapy IS the standard (Tier I)",
+      "examples": [
+        "BRAF V600E/K + NSCLC: dabrafenib+trametinib = Tier I",
+        "BRAF V600E + ATC: dabrafenib+trametinib = Tier I",
+        "PIK3CA hotspots + HR+/HER2- breast: alpelisib = Tier I",
+        "IDH1/2 mutations + AML: ivosidenib/enasidenib = Tier I",
+        "ESR1 mutations + ER+ breast: elacestrant = Tier I",
+        "KIT exon 11 + GIST: imatinib = Tier I",
+        "KIT D816V + SM: midostaurin/avapritinib = Tier I",
+        "KRAS G12C + CRC: sotorasib = Tier I"
+      ],
+      "estimated_impact": "Would fix ~17 errors (60.7%)"
+    },
+    {
+      "priority": 2,
+      "description": "Clarify that RAS mutations in CRC are Tier I resistance markers (NCCN mandated testing)",
+      "rationale": "KRAS/NRAS mutations in CRC exclude anti-EGFR therapy - this is Tier I because it's NCCN Category 1 mandated testing",
+      "estimated_impact": "Would fix ~3 KRAS CRC errors"
+    },
+    {
+      "priority": 3,
+      "description": "Add negative list of genes that are NOT therapeutically targetable",
+      "examples": ["TP53", "APC", "VHL (in ccRCC)", "SMAD4"],
+      "estimated_impact": "Would fix ~5 over-upgraded errors"
+    }
+  ]
+}
